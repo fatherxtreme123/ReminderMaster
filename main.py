@@ -1,9 +1,10 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, simpledialog
+from tkinter import ttk, filedialog, messagebox
 import threading
 import time
 import pygame
 import TKinterModernThemes as TKMT
+import webbrowser
 
 def createToolTip(widget, text):
     try:
@@ -54,11 +55,6 @@ class App(TKMT.ThemedTKinterFrame):
             createToolTip(self.time_input, "Enter the time for the reminder in the format (hours:minutes:seconds).\nFor example, 1:30:00 represents 1 hour, 30 minutes, and 0 seconds.")
             self.time_input.grid(row=1, column=1, sticky="ew", pady=10)
 
-            self.auto_close_var = tk.IntVar(value=1)
-            self.auto_close_check = ttk.Checkbutton(self.right_frame, text="Auto Close", variable=self.auto_close_var, command=self.show_close_time_input)
-            createToolTip(self.auto_close_check, "Enable auto close for the reminder.")
-            self.auto_close_check.grid(row=2, column=0, columnspan=2, pady=10)
-
             self.repeat_var = tk.IntVar(value=1)
             self.repeat_check = ttk.Checkbutton(self.right_frame, text="Repeat Reminder", variable=self.repeat_var)
             createToolTip(self.repeat_check, "Enable repeating reminders.")
@@ -78,17 +74,12 @@ class App(TKMT.ThemedTKinterFrame):
             createToolTip(self.browse_sound_button, "Browse and select a sound file (MP3) for the reminder.")
             self.browse_sound_button.grid(row=6, column=0, columnspan=2, pady=10)
 
+            self.send_feedback_button = ttk.Button(self.left_frame, text="Send Feedback", command=self.send_feedback)
+            createToolTip(self.send_feedback_button, "Click to open the GitHub issues page and send feedback")
+            self.send_feedback_button.grid(row=6, column=0, sticky="ew", pady=10)
+
             self.reminder_thread = None
             self.time_input.insert(0, "0:05:00")
-        except Exception as e:
-            messagebox.showerror("Error", f"An error occurred: {e}")
-
-    def show_close_time_input(self):
-        try:
-            if self.auto_close_var.get():
-                close_time = simpledialog.askinteger("Auto Close Time", "Enter the time in seconds after which the reminder window should automatically close:", initialvalue=3)
-                if close_time is not None:
-                    pass
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
@@ -110,37 +101,31 @@ class App(TKMT.ThemedTKinterFrame):
                 return
             hours, minutes, seconds = map(int, time_str.split(":"))
             time_interval = hours * 3600 + minutes * 60 + seconds
-
             sound_path = self.sound_path.get()
             if sound_path == "No Sound":
                 sound_path = "default_reminder.mp3"
             self.status_label.config(text="Reminder started", foreground="green")
-            self.reminder_thread = threading.Thread(target=self.reminder, args=(time_interval, sound_path))
+            self.reminder_thread = threading.Thread(target=self.reminder, args=(time_interval, sound_path, text))
             self.reminder_thread.start()
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
-    def reminder(self, time_interval, sound_path):
+    def reminder(self, time_interval, sound_path, text):
         try:
             pygame.mixer.init()
-
             def play_sound():
                 pygame.mixer.music.load(sound_path)
                 pygame.mixer.music.play()
-
             while True:
                 time.sleep(time_interval)
                 reminder_window = tk.Toplevel()
                 reminder_window.geometry("400x200")
                 reminder_window.attributes('-topmost', 1)
-
                 if sound_path != "No Sound":
                     play_sound()
-
-                if self.auto_close_var.get():
-                    close_time = int(time_interval)
-                    self.master.after(close_time * 1000, lambda: self.stop_sound(reminder_window))
-
+                label = tk.Label(reminder_window, text=text, font=("Arial", 12))
+                label.pack()
+                reminder_window.after(3000, lambda: self.stop_sound(reminder_window))
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
@@ -151,6 +136,12 @@ class App(TKMT.ThemedTKinterFrame):
         try:
             pygame.mixer.music.stop()
             reminder_window.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    def send_feedback(self):
+        try:
+            webbrowser.open("https://github.com/fatherxtreme123/ReminderMaster/issues")
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
